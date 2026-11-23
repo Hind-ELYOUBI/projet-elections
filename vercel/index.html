@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>Résultats électoraux en direct</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="config.js"></script></head>
+<body>
+<header><h1>Résultats électoraux en direct</h1>
+  <div>Cloud actif : <span id="cloud" class="badge">…</span> · <a href="portail.html">Portail bureaux</a></div></header>
+<main>
+  <div class="grid">
+    <div class="card kpi"><b id="remontes">–</b><span>bureaux remontés</span></div>
+    <div class="card kpi"><b id="votants">–</b><span>votants</span></div>
+    <div class="card kpi"><b id="participation">–</b><span>participation</span></div>
+    <div class="card kpi"><b id="nbano">–</b><span>anomalies détectées</span></div>
+  </div>
+  <div class="card"><h3>Résultat national</h3><canvas id="chart" height="90"></canvas></div>
+  <div class="card"><h3>Par région</h3><table id="regions"></table></div>
+  <div class="card"><h3>Anomalies</h3><div id="anomalies">Aucune</div></div>
+</main>
+<script>
+let chart;
+async function maj(){
+  try{
+    const [r,a,e]=await Promise.all(["/api/resultats","/api/anomalies","/api/etat"]
+      .map(p=>fetch(DASHBOARD_URL+p).then(x=>x.json())));
+    const c=document.getElementById("cloud"); c.textContent=e.cloud.toUpperCase(); c.className="badge "+e.cloud;
+    document.getElementById("remontes").textContent=`${r.bureaux_remontes} / ${r.bureaux_total}`;
+    document.getElementById("votants").textContent=r.votants.toLocaleString("fr");
+    document.getElementById("participation").textContent=(100*r.votants/r.inscrits).toFixed(1)+" %";
+    document.getElementById("nbano").textContent=a.length;
+    const data=CANDIDATS.map(k=>r.national[k]||0);
+    if(!chart) chart=new Chart(document.getElementById("chart"),{type:"bar",
+      data:{labels:CANDIDATS,datasets:[{label:"Voix",data,backgroundColor:["#2a6fb0","#e0812f","#3c9d5d"]}]},
+      options:{indexAxis:"y",plugins:{legend:{display:false}}}});
+    else {chart.data.datasets[0].data=data; chart.update();}
+    let h="<tr><th>Région</th>"+CANDIDATS.map(k=>`<th>${k}</th>`).join("")+"</tr>";
+    for(const [reg,v] of Object.entries(r.regions)) h+=`<tr><td>${reg}</td>`+CANDIDATS.map(k=>`<td>${v[k]||0}</td>`).join("")+"</tr>";
+    document.getElementById("regions").innerHTML=h;
+    document.getElementById("anomalies").innerHTML=a.length?a.map(x=>
+      `<div class="anomalie"><b>${x.type}</b> — bureau ${x.bureau_id} — ${x.details}
+       <small>(${new Date(x.created_at).toLocaleTimeString("fr")})</small></div>`).join(""):"Aucune";
+  }catch(err){console.log(err)}
+}
+maj(); setInterval(maj,5000);
+</script></body></html>

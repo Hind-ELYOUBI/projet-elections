@@ -1,0 +1,11 @@
+route:
+  receiver: controller
+  group_by: [alertname]
+  group_wait: 1s
+  group_interval: 5s
+  repeat_interval: 1m
+receivers:
+  - name: controller
+    webhook_configs:
+      - url: http://localhost:5000/alerts
+        send_resolved: true

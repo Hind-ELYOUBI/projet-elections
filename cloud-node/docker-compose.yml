@@ -1,0 +1,71 @@
+# Meme fichier sur Azure et Oracle. Tout en network_mode: host -> les ports
+# ne sont joignables que via Tailscale (pare-feu cloud : seul SSH ouvert).
+x-app: &app
+  build: ./app
+  network_mode: host
+  restart: unless-stopped
+  env_file: .env
+
+services:
+  kafka:
+    image: apache/kafka:3.8.0
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      CLUSTER_ID: "q1Sh-9_ISia_zwGINzRvyQ"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://localhost:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${MY_IP}:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      KAFKA_LOG_DIRS: /tmp/kraft-logs
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+
+  postgres:
+    build: ./patroni
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      PATRONI_NAME: ${CLOUD}
+      PATRONI_RESTAPI_CONNECT_ADDRESS: ${MY_IP}:8008
+      PATRONI_POSTGRESQL_CONNECT_ADDRESS: ${MY_IP}:5432
+      PATRONI_ETCD3_HOSTS: ${GCP_IP}:2379
+      PATRONI_SUPERUSER_USERNAME: postgres
+      PATRONI_SUPERUSER_PASSWORD: ${PG_PASSWORD}
+      PATRONI_REPLICATION_USERNAME: replicator
+      PATRONI_REPLICATION_PASSWORD: ${REPL_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  cloud_api:
+    <<: *app
+    command: uvicorn cloud_api:app --host 0.0.0.0 --port 8000
+  aggregator:
+    <<: *app
+    command: python -u aggregator.py
+  anomaly_engine:
+    <<: *app
+    command: python -u anomaly_engine.py
+  relay:
+    <<: *app
+    command: python -u relay.py
+
+  node_exporter:
+    image: prom/node-exporter:v1.8.2
+    network_mode: host
+    pid: host
+    restart: unless-stopped
+    command: --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+
+volumes:
+  pg-data:

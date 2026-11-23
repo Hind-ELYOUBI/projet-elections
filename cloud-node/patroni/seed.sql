@@ -1,0 +1,60 @@
+CREATE TABLE IF NOT EXISTS bureaux (bureau_id TEXT PRIMARY KEY, region TEXT NOT NULL, inscrits INT NOT NULL);
+CREATE TABLE IF NOT EXISTS votes (
+  bureau_id TEXT REFERENCES bureaux, candidat TEXT, nb INT NOT NULL CHECK (nb >= 0),
+  submitted_at TIMESTAMPTZ, PRIMARY KEY (bureau_id, candidat));
+CREATE TABLE IF NOT EXISTS anomalies (
+  id SERIAL PRIMARY KEY, bureau_id TEXT, type TEXT, details TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(), UNIQUE (bureau_id, type));
+CREATE OR REPLACE VIEW resultats_region AS
+  SELECT b.region, v.candidat, SUM(v.nb)::INT AS total
+  FROM votes v JOIN bureaux b USING (bureau_id) GROUP BY 1, 2;
+INSERT INTO bureaux VALUES
+('B101','Rabat-Sale-Kenitra',565),
+('B102','Rabat-Sale-Kenitra',885),
+('B103','Rabat-Sale-Kenitra',477),
+('B104','Rabat-Sale-Kenitra',602),
+('B105','Rabat-Sale-Kenitra',733),
+('B106','Rabat-Sale-Kenitra',424),
+('B107','Rabat-Sale-Kenitra',437),
+('B108','Rabat-Sale-Kenitra',820),
+('B201','Casablanca-Settat',674),
+('B202','Casablanca-Settat',448),
+('B203','Casablanca-Settat',587),
+('B204','Casablanca-Settat',698),
+('B205','Casablanca-Settat',429),
+('B206','Casablanca-Settat',865),
+('B207','Casablanca-Settat',659),
+('B208','Casablanca-Settat',509),
+('B301','Fes-Meknes',419),
+('B302','Fes-Meknes',444),
+('B303','Fes-Meknes',622),
+('B304','Fes-Meknes',614),
+('B305','Fes-Meknes',435),
+('B306','Fes-Meknes',523),
+('B307','Fes-Meknes',446),
+('B308','Fes-Meknes',682),
+('B401','Marrakech-Safi',617),
+('B402','Marrakech-Safi',430),
+('B403','Marrakech-Safi',823),
+('B404','Marrakech-Safi',689),
+('B405','Marrakech-Safi',463),
+('B406','Marrakech-Safi',885),
+('B407','Marrakech-Safi',514),
+('B408','Marrakech-Safi',722),
+('B501','Tanger-Tetouan-AlHoceima',721),
+('B502','Tanger-Tetouan-AlHoceima',698),
+('B503','Tanger-Tetouan-AlHoceima',885),
+('B504','Tanger-Tetouan-AlHoceima',431),
+('B505','Tanger-Tetouan-AlHoceima',695),
+('B506','Tanger-Tetouan-AlHoceima',699),
+('B507','Tanger-Tetouan-AlHoceima',603),
+('B508','Tanger-Tetouan-AlHoceima',425),
+('B601','Oriental',899),
+('B602','Oriental',513),
+('B603','Oriental',423),
+('B604','Oriental',685),
+('B605','Oriental',839),
+('B606','Oriental',468),
+('B607','Oriental',548),
+('B608','Oriental',614)
+ON CONFLICT DO NOTHING;

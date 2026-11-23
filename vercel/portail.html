@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>Portail de soumission</title>
+<link rel="stylesheet" href="style.css"><script src="config.js"></script></head>
+<body>
+<header><h1>Portail de soumission des bureaux de vote</h1><a href="index.html">Tableau de bord</a></header>
+<main><div class="card">
+  <form id="f">
+    <label>Identifiant du bureau</label><input name="bureau_id" placeholder="B101" required>
+    <label>Token du bureau</label><input name="token" type="password" required>
+    <div id="champs"></div>
+    <button>Publier les résultats</button>
+  </form>
+  <div id="msg"></div>
+</div></main>
+<script>
+document.getElementById("champs").innerHTML=CANDIDATS.map(c=>
+  `<label>${c}</label><input name="v_${c}" type="number" required>`).join("");
+document.getElementById("f").onsubmit=async ev=>{
+  ev.preventDefault(); const fd=new FormData(ev.target), votes={};
+  CANDIDATS.forEach(c=>votes[c]=Number(fd.get("v_"+c)));
+  const msg=document.getElementById("msg"); msg.textContent="Envoi…";
+  const r=await fetch(INGESTION_URL+"/submit",{method:"POST",headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({bureau_id:fd.get("bureau_id"),token:fd.get("token"),votes,timestamp:new Date().toISOString()})});
+  const j=await r.json();
+  msg.style.color=r.ok?"green":"#d93025";
+  msg.textContent=r.ok?`Résultats enregistrés (traités par ${j.cloud})`:"Refusé : "+JSON.stringify(j.detail);
+};
+</script></body></html>

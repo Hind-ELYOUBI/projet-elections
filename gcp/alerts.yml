@@ -1,0 +1,19 @@
+groups:
+  - name: bascule
+    rules:
+      - alert: AzureDown           # un port de metriques d'Azure ne repond plus
+        expr: min(up{cloud="azure"}) == 0
+        for: 15s
+        labels: {cloud: azure, failover: "true"}
+      - alert: AzureKafkaDown
+        expr: min(kafka_up{cloud="azure"}) == 0
+        for: 15s
+        labels: {cloud: azure, failover: "true"}
+      - alert: AzureSurcharge      # CPU > 90 % pendant 1 min
+        expr: 100 - avg(rate(node_cpu_seconds_total{mode="idle",cloud="azure"}[1m])) * 100 > 90
+        for: 1m
+        labels: {cloud: azure, failover: "true"}
+      - alert: OracleDown          # information seulement
+        expr: min(up{cloud="oracle"}) == 0
+        for: 15s
+        labels: {cloud: oracle}
